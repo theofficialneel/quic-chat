@@ -4,40 +4,43 @@ using namespace std;
 
 class QUICHeader {
 public:
-	int SequenceNumber;
-    int ConnectionID;
-    int Version;
+	int sequenceNumber;
+    int connectionID;
+	int streamID;
 
-	QUICHeader(int cid, int seq) {
-		ConnectionID = cid;
-		SequenceNumber = seq;
+	QUICHeader(int cid, int sid, int seq) {
+		connectionID = cid;
+		sequenceNumber = seq;
+		streamID = sid;
 	}
 };
 
 class QUICPacket {
 public:
-	QUICHeader *Header;
-	string Message;
+	QUICHeader *header;
+	string message;
 
-	QUICPacket(int cid, int seq, string msg) {
-		Header = new QUICHeader(cid, seq);
-		Message = msg;
+	QUICPacket(int cid, int sid, int seq, string msg) {
+		header = new QUICHeader(cid, sid, seq);
+		message = msg;
 	}
 
 	QUICPacket(string serializedbuffer) {
 		vector<string> result;
 		boost::split(result, serializedbuffer, boost::is_any_of(";"));
-		Header = new QUICHeader(atoi(result[0].c_str()), atoi(result[1].c_str()));
-		Message = result[2];
+		header = new QUICHeader(atoi(result[0].c_str()), atoi(result[1].c_str()), atoi(result[2].c_str()));
+		message = result[3];
 	}
 
 	string SerializePacket() {
 		string result = "";
-		result += to_string(this->Header->ConnectionID);
+		result += to_string(this->header->connectionID);
 		result += ";";
-		result += to_string(this->Header->SequenceNumber);
+		result += to_string(this->header->streamID);
 		result += ";";
-		result += this->Message;
+		result += to_string(this->header->sequenceNumber);
+		result += ";";
+		result += this->message;
 		result += ";";
 		return result;
 	}

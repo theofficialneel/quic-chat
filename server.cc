@@ -8,11 +8,17 @@
 #include "quic-structs.cc"
 using namespace std;
 
-#define PORT 8080
+#define SERVER_PORT 8080
+#define CLIENT_PORT 9080
 #define BUFSIZE 1024
+
+map<int, map<int, string>> dataStore;
 
 int main()
 {
+	string message = "Client Program!";
+  	cout << message << endl;
+	  
 	int fd;
 	int reclen;
 	struct sockaddr_in servaddr, cliaddr;
@@ -31,7 +37,11 @@ int main()
 
 	servaddr.sin_family = AF_INET; // IPv4
 	servaddr.sin_addr.s_addr = INADDR_ANY;
-	servaddr.sin_port = htons(PORT);
+	servaddr.sin_port = htons(SERVER_PORT);
+
+	cliaddr.sin_family = AF_INET; // IPv4
+	cliaddr.sin_addr.s_addr = INADDR_ANY;
+	cliaddr.sin_port = htons(CLIENT_PORT);
 
 	if (bind(fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
 	{
@@ -39,7 +49,7 @@ int main()
 		exit(EXIT_FAILURE);
 	}
 
-	cout << "Waiting on PORT " << PORT << endl;
+	cout << "Server bound to Port: " << SERVER_PORT << endl;
 	while (1)
 	{
 		reclen = recvfrom(fd, (char *)buffer, BUFSIZE, 0, (struct sockaddr *)&cliaddr, &addrlen);
@@ -47,13 +57,22 @@ int main()
 		{
 			buffer[reclen] = '\0';
 			QUICPacket *recvdpacket = new QUICPacket(buffer);
-			cout << "Client : [" << recvdpacket->Header->ConnectionID << "][" << recvdpacket->Header->SequenceNumber << "]:" << recvdpacket->Message << endl;
-			if (strcmp("END", buffer) == 0)
-			{
+			if (strcmp("END", recvdpacket->message.c_str()) == 0){
+				cout << "Terminating connection with the server" << endl;
 				break;
 			}
+			cout << "Received: [" << recvdpacket->header->streamID << "][" << recvdpacket->header->sequenceNumber << "]: " << recvdpacket->message << endl;
+			dataStore[recvdpacket->header->streamID].insert(pair<int, string>(recvdpacket->header->sequenceNumber, recvdpacket->message));
 		}
 	}
+
+	for (auto oitr = dataStore.begin(); oitr != dataStore.end(); oitr++) { 
+		cout << "StreamID " << oitr->first << ": ";
+        for (auto iitr = oitr->second.begin(); iitr != oitr->second.end(); iitr++) { 
+            cout << iitr->second;
+        }
+		cout << endl;
+    }
 
 	close(fd);
 	return 0;
